@@ -6,6 +6,9 @@ import tasktracker.model.Task;
 import tasktracker.model.TaskStatus;
 
 import java.io.*;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -13,14 +16,16 @@ import java.util.logging.Logger;
 public class FileBackedTaskManager extends InMemoryTaskManager {
     private static final Logger logger = Logger.getLogger(FileBackedTaskManager.class.getName());
     private final File file;
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     public FileBackedTaskManager(File file) {
         this.file = file;
     }
 
+    // Сохранение задач в файл
     private void save() {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
-            writer.write("id,type,name,status,description,epic\n");
+            writer.write("id,type,name,status,description,epic,duration,startTime\n");
             for (Task task : getAllTasks()) {
                 writer.write(toString(task) + "\n");
             }
@@ -31,21 +36,28 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
                 writer.write(toString(subtask) + "\n");
             }
         } catch (IOException e) {
-            logger.severe("Error saving to file: " + e.getMessage());
-            throw new ManagerSaveException("Error saving to file", e);
+            logger.severe("Ошибка при сохранении в файл: " + e.getMessage());
+            throw new ManagerSaveException("Ошибка при сохранении в файл", e);
         }
     }
 
+    // Преобразование задачи в строку для сохранения
     private String toString(Task task) {
-        return String.format("%d,%s,%s,%s,%s,%s",
+        String startTime = task.getStartTime() != null ? task.getStartTime().format(formatter) : "";
+        String duration = task.getDuration() != null ? String.valueOf(task.getDuration().toMinutes()) : "";
+
+        return String.format("%d,%s,%s,%s,%s,%s,%s,%s",
                 task.getId(),
                 task.getType(),
                 task.getTitle(),
                 task.getStatus(),
                 task.getDescription(),
-                task instanceof Subtask ? ((Subtask) task).getEpicId() : "");
+                task instanceof Subtask ? ((Subtask) task).getEpicId() : "",
+                duration,
+                startTime);
     }
 
+    // Преобразование строки в задачу при загрузке
     private Task fromString(String value) {
         String[] fields = value.split(",");
         int id = Integer.parseInt(fields[0]);
@@ -53,46 +65,27 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
         String title = fields[2];
         TaskStatus status = TaskStatus.valueOf(fields[3]);
         String description = fields[4];
+        Duration duration = fields[6].isEmpty() ? null : Duration.ofMinutes(Long.parseLong(fields[6]));
+        LocalDateTime startTime = fields[7].isEmpty() ? null : LocalDateTime.parse(fields[7], formatter);
 
         switch (type) {
             case "EPIC":
-                return new Epic(title, description, id, status);
+                Epic epic = new Epic(title, description, id, status);
+                epic.setDuration(duration);
+                epic.setStartTime(startTime);
+                return epic;
             case "SUBTASK":
                 int epicId = Integer.parseInt(fields[5]);
-                return new Subtask(title, description, id, status, epicId);
+                Subtask subtask = new Subtask(title, description, id, status, epicId);
+                subtask.setDuration(duration);
+                subtask.setStartTime(startTime);
+                return subtask;
             default:
-                return new Task(title, description, id, status);
+                Task task = new Task(title, description, id, status);
+                task.setDuration(duration);
+                task.setStartTime(startTime);
+                return task;
         }
-    }
-
-    public static FileBackedTaskManager loadFromFile(File file) {
-        FileBackedTaskManager manager = new FileBackedTaskManager(file);
-        Map<Integer, Subtask> subtasks = new HashMap<>();
-
-        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-            reader.readLine();
-            String line;
-
-            while ((line = reader.readLine()) != null) {
-                Task task = manager.fromString(line);
-                if (task.getType().equals("EPIC")) {
-                    manager.createEpic((Epic) task);
-                } else if (task.getType().equals("SUBTASK")) {
-                    subtasks.put(task.getId(), (Subtask) task);
-                } else {
-                    manager.createTask(task);
-                }
-            }
-
-            for (Subtask subtask : subtasks.values()) {
-                manager.createSubtask(subtask);
-            }
-        } catch (IOException e) {
-            logger.severe("Error loading from file: " + e.getMessage());
-            throw new ManagerSaveException("Error loading from file", e);
-        }
-
-        return manager;
     }
 
     @Override
@@ -135,5 +128,28 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
     public void deleteSubtaskById(int id) {
         super.deleteSubtaskById(id);
         save();
+    }
+
+    // Загрузка менеджера из файла
+    public static FileBackedTaskManager loadFromFile(File file) {
+        FileBackedTaskManager manager = new FileBackedTaskManager(file);
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+            reader.readLine(); // Пропускаем заголовок
+            String line;
+            while ((line = reader.readLine()) != null) {
+                Task task = manager.fromString(line);
+                if (task instanceof Epic) {
+                    manager.createEpic((Epic) task);
+                } else if (task instanceof Subtask) {
+                    manager.createSubtask((Subtask) task);
+                } else {
+                    manager.createTask(task);
+                }
+            }
+        } catch (IOException e) {
+            logger.severe("Ошибка при загрузке из файла: " + e.getMessage());
+            throw new ManagerSaveException("Ошибка при загрузке из файла", e);
+        }
+        return manager;
     }
 }
