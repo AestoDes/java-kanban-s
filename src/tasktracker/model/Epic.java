@@ -23,6 +23,15 @@ public class Epic extends Task {
         subtaskIds.add(id);
     }
 
+    public void removeSubtaskId(int id) {
+        subtaskIds.remove((Integer) id);
+    }
+
+    @Override
+    public String getType() {
+        return "EPIC";
+    }
+
     @Override
     public LocalDateTime getStartTime() {
         return subtaskIds.stream()
@@ -48,10 +57,5 @@ public class Epic extends Task {
                 .filter(Objects::nonNull)
                 .max(LocalDateTime::compareTo)
                 .orElse(null);
-    }
-
-    @Override
-    public String getType() {
-        return "EPIC";
     }
 }

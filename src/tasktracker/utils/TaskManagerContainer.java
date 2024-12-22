@@ -9,7 +9,7 @@ public class TaskManagerContainer {
         return manager;
     }
 
-    public static void setManager(TaskManager taskManager) {
-        manager = taskManager;
+    public static void setManager(TaskManager manager) {
+        TaskManagerContainer.manager = manager;
     }
 }
