@@ -4,6 +4,7 @@ import tasktracker.model.Epic;
 import tasktracker.model.Subtask;
 import tasktracker.model.Task;
 import tasktracker.utils.TaskManagerContainer;
+
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -38,6 +39,7 @@ public class InMemoryTaskManager implements TaskManager {
     public void updateTask(Task task) {
         if (tasks.containsKey(task.getId())) {
             prioritizedTasks.remove(tasks.get(task.getId()));
+            validateTaskTime(task);
             tasks.put(task.getId(), task);
             prioritizedTasks.add(task);
         }
@@ -148,17 +150,18 @@ public class InMemoryTaskManager implements TaskManager {
     }
 
     private void validateTaskTime(Task newTask) {
+        if (newTask.getStartTime() == null || newTask.getEndTime() == null) {
+            return;
+        }
         for (Task existingTask : prioritizedTasks) {
-            if (tasksOverlap(existingTask, newTask)) {
+            if (existingTask.getStartTime() != null && existingTask.getEndTime() != null
+                    && tasksOverlap(existingTask, newTask)) {
                 throw new IllegalArgumentException("Task " + newTask.getTitle() + " overlaps with Task " + existingTask.getTitle());
             }
         }
     }
 
     private boolean tasksOverlap(Task task1, Task task2) {
-        if (task1.getStartTime() == null || task2.getStartTime() == null) {
-            return false; // Tasks without start times are not checked
-        }
         return task1.getEndTime().isAfter(task2.getStartTime()) && task2.getEndTime().isAfter(task1.getStartTime());
     }
 }
