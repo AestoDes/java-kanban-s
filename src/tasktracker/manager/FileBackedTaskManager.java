@@ -57,7 +57,7 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
 
     // Преобразование строки в задачу при загрузке
     private Task fromString(String value) {
-        String[] fields = value.split(",");
+        String[] fields = value.split(",", -1);
         if (fields.length < 8) {
             logger.warning("Некорректная строка (меньше 8 полей): " + value);
             return null;
