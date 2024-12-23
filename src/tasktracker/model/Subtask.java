@@ -8,7 +8,6 @@ public class Subtask extends Task {
         this.epicId = epicId;
     }
 
-    // ID связанного эпика
     public int getEpicId() {
         return epicId;
     }

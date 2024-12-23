@@ -58,15 +58,18 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
     // Преобразование строки в задачу при загрузке
     private Task fromString(String value) {
         String[] fields = value.split(",");
-        if (fields.length != 8) {
-            throw new ManagerSaveException("Некорректные данные в файле: " + value);
+        if (fields.length < 8) {
+            logger.warning("Некорректная строка (меньше 8 полей): " + value);
+            return null;
         }
+
         try {
             int id = Integer.parseInt(fields[0]);
             String type = fields[1];
             String title = fields[2];
-            TaskStatus status = TaskStatus.valueOf(fields[3]);
+            TaskStatus status = fields[3].isEmpty() ? TaskStatus.NEW : TaskStatus.valueOf(fields[3]);
             String description = fields[4];
+            Integer epicId = fields[5].isEmpty() ? null : Integer.parseInt(fields[5]);
             Duration duration = fields[6].isEmpty() ? null : Duration.ofMinutes(Long.parseLong(fields[6]));
             LocalDateTime startTime = fields[7].isEmpty() ? null : LocalDateTime.parse(fields[7], formatter);
 
@@ -77,7 +80,10 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
                     epic.setStartTime(startTime);
                     return epic;
                 case "SUBTASK":
-                    int epicId = Integer.parseInt(fields[5]);
+                    if (epicId == null) {
+                        logger.warning("Subtask должен иметь epicId");
+                        return null;
+                    }
                     Subtask subtask = new Subtask(title, description, id, status, epicId);
                     subtask.setDuration(duration);
                     subtask.setStartTime(startTime);
@@ -89,7 +95,8 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
                     return task;
             }
         } catch (Exception e) {
-            throw new ManagerSaveException("Ошибка обработки строки: " + value, e);
+            logger.warning("Ошибка при разборе строки: " + value + ". Причина: " + e.getMessage());
+            return null;
         }
     }
 
@@ -143,6 +150,7 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
             String line;
             while ((line = reader.readLine()) != null) {
                 Task task = manager.fromString(line);
+                if (task == null) continue;
                 if (task instanceof Epic) {
                     manager.createEpic((Epic) task);
                 } else if (task instanceof Subtask) {

@@ -150,12 +150,11 @@ public class InMemoryTaskManager implements TaskManager {
     }
 
     private void validateTaskTime(Task newTask) {
-        if (newTask.getStartTime() == null || newTask.getEndTime() == null) {
-            return;
+        if (newTask.getStartTime() == null) {
+            return; // Задачи без времени старта не проверяются
         }
         for (Task existingTask : prioritizedTasks) {
-            if (existingTask.getStartTime() != null && existingTask.getEndTime() != null
-                    && tasksOverlap(existingTask, newTask)) {
+            if (existingTask.getStartTime() != null && tasksOverlap(existingTask, newTask)) {
                 throw new IllegalArgumentException("Task " + newTask.getTitle() + " overlaps with Task " + existingTask.getTitle());
             }
         }
