@@ -142,7 +142,14 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
             reader.readLine(); // Пропускаем заголовок
             String line;
             while ((line = reader.readLine()) != null) {
-                manager.fromString(line);
+                Task task = manager.fromString(line);
+                if (task instanceof Epic) {
+                    manager.createEpic((Epic) task);
+                } else if (task instanceof Subtask) {
+                    manager.createSubtask((Subtask) task);
+                } else {
+                    manager.createTask(task);
+                }
             }
         } catch (IOException e) {
             logger.severe("Ошибка при загрузке из файла: " + e.getMessage());
