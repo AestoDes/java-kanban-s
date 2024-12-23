@@ -20,6 +20,7 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
         this.file = file;
     }
 
+    // Сохранение задач в файл
     private void save() {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
             writer.write("id,type,name,status,description,epic,duration,startTime\n");
@@ -38,6 +39,7 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
         }
     }
 
+    // Преобразование задачи в строку для сохранения
     private String toString(Task task) {
         String startTime = task.getStartTime() != null ? task.getStartTime().format(formatter) : "";
         String duration = task.getDuration() != null ? String.valueOf(task.getDuration().toMinutes()) : "";
@@ -53,6 +55,7 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
                 startTime);
     }
 
+    // Преобразование строки в задачу при загрузке
     private Task fromString(String value) {
         String[] fields = value.split(",");
         int id = Integer.parseInt(fields[0]);
@@ -66,6 +69,8 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
         switch (type) {
             case "EPIC":
                 Epic epic = new Epic(title, description, id, status);
+                epic.setDuration(duration);
+                epic.setStartTime(startTime);
                 return epic;
             case "SUBTASK":
                 int epicId = Integer.parseInt(fields[5]);
@@ -123,19 +128,24 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
         save();
     }
 
+    // Загрузка менеджера из файла
     public static FileBackedTaskManager loadFromFile(File file) {
         FileBackedTaskManager manager = new FileBackedTaskManager(file);
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-            reader.readLine();
+            reader.readLine(); // Пропускаем заголовок
             String line;
             while ((line = reader.readLine()) != null) {
-                Task task = manager.fromString(line);
-                if (task instanceof Epic) {
-                    manager.createEpic((Epic) task);
-                } else if (task instanceof Subtask) {
-                    manager.createSubtask((Subtask) task);
-                } else {
-                    manager.createTask(task);
+                try {
+                    Task task = manager.fromString(line);
+                    if (task instanceof Epic) {
+                        manager.createEpic((Epic) task);
+                    } else if (task instanceof Subtask) {
+                        manager.createSubtask((Subtask) task);
+                    } else {
+                        manager.createTask(task);
+                    }
+                } catch (Exception e) {
+                    throw new ManagerSaveException("Некорректные данные в файле: " + line, e);
                 }
             }
         } catch (IOException e) {

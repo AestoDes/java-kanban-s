@@ -5,12 +5,14 @@ import tasktracker.model.Task;
 import tasktracker.model.TaskStatus;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.time.Duration;
 import java.time.LocalDateTime;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class FileBackedTaskManagerTest {
 
@@ -54,7 +56,7 @@ public class FileBackedTaskManagerTest {
         File file = File.createTempFile("invalid_tasks", ".csv");
         file.deleteOnExit();
 
-        try (PrintWriter writer = new PrintWriter(file)) {
+        try (var writer = new FileWriter(file)) {
             writer.write("invalid,data");
         }
 
