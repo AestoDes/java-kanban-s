@@ -58,31 +58,38 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
     // Преобразование строки в задачу при загрузке
     private Task fromString(String value) {
         String[] fields = value.split(",");
-        int id = Integer.parseInt(fields[0]);
-        String type = fields[1];
-        String title = fields[2];
-        TaskStatus status = TaskStatus.valueOf(fields[3]);
-        String description = fields[4];
-        Duration duration = fields[6].isEmpty() ? null : Duration.ofMinutes(Long.parseLong(fields[6]));
-        LocalDateTime startTime = fields[7].isEmpty() ? null : LocalDateTime.parse(fields[7], formatter);
+        if (fields.length != 8) {
+            throw new ManagerSaveException("Некорректные данные в файле: " + value);
+        }
+        try {
+            int id = Integer.parseInt(fields[0]);
+            String type = fields[1];
+            String title = fields[2];
+            TaskStatus status = TaskStatus.valueOf(fields[3]);
+            String description = fields[4];
+            Duration duration = fields[6].isEmpty() ? null : Duration.ofMinutes(Long.parseLong(fields[6]));
+            LocalDateTime startTime = fields[7].isEmpty() ? null : LocalDateTime.parse(fields[7], formatter);
 
-        switch (type) {
-            case "EPIC":
-                Epic epic = new Epic(title, description, id, status);
-                epic.setDuration(duration);
-                epic.setStartTime(startTime);
-                return epic;
-            case "SUBTASK":
-                int epicId = Integer.parseInt(fields[5]);
-                Subtask subtask = new Subtask(title, description, id, status, epicId);
-                subtask.setDuration(duration);
-                subtask.setStartTime(startTime);
-                return subtask;
-            default:
-                Task task = new Task(title, description, id, status);
-                task.setDuration(duration);
-                task.setStartTime(startTime);
-                return task;
+            switch (type) {
+                case "EPIC":
+                    Epic epic = new Epic(title, description, id, status);
+                    epic.setDuration(duration);
+                    epic.setStartTime(startTime);
+                    return epic;
+                case "SUBTASK":
+                    int epicId = Integer.parseInt(fields[5]);
+                    Subtask subtask = new Subtask(title, description, id, status, epicId);
+                    subtask.setDuration(duration);
+                    subtask.setStartTime(startTime);
+                    return subtask;
+                default:
+                    Task task = new Task(title, description, id, status);
+                    task.setDuration(duration);
+                    task.setStartTime(startTime);
+                    return task;
+            }
+        } catch (Exception e) {
+            throw new ManagerSaveException("Ошибка обработки строки: " + value, e);
         }
     }
 
@@ -135,18 +142,7 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
             reader.readLine(); // Пропускаем заголовок
             String line;
             while ((line = reader.readLine()) != null) {
-                try {
-                    Task task = manager.fromString(line);
-                    if (task instanceof Epic) {
-                        manager.createEpic((Epic) task);
-                    } else if (task instanceof Subtask) {
-                        manager.createSubtask((Subtask) task);
-                    } else {
-                        manager.createTask(task);
-                    }
-                } catch (Exception e) {
-                    throw new ManagerSaveException("Некорректные данные в файле: " + line, e);
-                }
+                manager.fromString(line);
             }
         } catch (IOException e) {
             logger.severe("Ошибка при загрузке из файла: " + e.getMessage());

@@ -4,15 +4,14 @@ import org.junit.jupiter.api.Test;
 import tasktracker.model.Task;
 import tasktracker.model.TaskStatus;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class FileBackedTaskManagerTest {
 
@@ -52,15 +51,35 @@ public class FileBackedTaskManagerTest {
     }
 
     @Test
-    public void shouldThrowErrorForInvalidFile() throws IOException {
+    public void shouldThrowErrorForInvalidFileFormat() throws IOException {
         File file = File.createTempFile("invalid_tasks", ".csv");
         file.deleteOnExit();
 
-        try (var writer = new FileWriter(file)) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
             writer.write("invalid,data");
         }
 
-        assertThrows(ManagerSaveException.class, () -> FileBackedTaskManager.loadFromFile(file),
+        assertThrows(ManagerSaveException.class,
+                () -> FileBackedTaskManager.loadFromFile(file),
                 "Expected ManagerSaveException to be thrown for invalid file");
+    }
+
+    @Test
+    public void shouldThrowErrorForMissingColumns() throws IOException {
+        File file = File.createTempFile("missing_columns", ".csv");
+        file.deleteOnExit();
+
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+            writer.write("id,type,name,status\n"); // Missing required columns
+        }
+
+        ManagerSaveException exception = assertThrows(
+                ManagerSaveException.class,
+                () -> FileBackedTaskManager.loadFromFile(file),
+                "Expected ManagerSaveException for missing columns"
+        );
+
+        assertTrue(exception.getMessage().contains("Некорректные данные в файле"),
+                "Exception message should indicate incorrect file format");
     }
 }
