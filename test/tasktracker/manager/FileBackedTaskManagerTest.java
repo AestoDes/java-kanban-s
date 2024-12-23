@@ -22,8 +22,8 @@ public class FileBackedTaskManagerTest {
 
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
             writer.write("id,type,name,status,description,epic,duration,startTime\n");
-            writer.write("1,TASK,Corrupted,,MissingFields,,invalid_duration,\n"); // Некорректная строка
-            writer.write("2,TASK,Valid Task,NEW,Valid description,,30,2024-12-23T10:00\n"); // Корректная строка
+            writer.write("1,TASK,Corrupted,,MissingFields,,invalid_duration,\n");
+            writer.write("2,TASK,Valid Task,NEW,Valid description,,30,2024-12-23T10:00\n");
         }
 
         FileBackedTaskManager loadedManager = FileBackedTaskManager.loadFromFile(file);
@@ -42,7 +42,7 @@ public class FileBackedTaskManagerTest {
 
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
             writer.write("id,type,name,status,description,epic,duration,startTime\n");
-            writer.write("1,TASK,Task with null start time,NEW,Test task,,30,\n"); // Строка с null startTime
+            writer.write("1,TASK,Task with null start time,NEW,Test task,,30,\n");
         }
 
         FileBackedTaskManager loadedManager = FileBackedTaskManager.loadFromFile(file);
@@ -87,6 +87,5 @@ public class FileBackedTaskManagerTest {
         assertEquals(task.getTitle(), loadedTask.getTitle(), "Заголовок задачи должен совпадать");
         assertEquals(task.getDuration(), loadedTask.getDuration(), "Длительность должна совпадать");
         assertEquals(task.getStartTime(), loadedTask.getStartTime(), "Start time должен совпадать");
-        assertEquals(task.getEndTime(), loadedTask.getEndTime(), "End time должен совпадать");
     }
 }

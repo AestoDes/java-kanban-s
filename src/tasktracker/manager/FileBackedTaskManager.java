@@ -88,7 +88,7 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
                     subtask.setDuration(duration);
                     subtask.setStartTime(startTime);
                     return subtask;
-                default:
+                default: // TASK
                     Task task = new Task(title, description, id, status);
                     task.setDuration(duration);
                     task.setStartTime(startTime);
